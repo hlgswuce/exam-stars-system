@@ -4,12 +4,12 @@ import streamlit as st
 
 # 設定網頁標題與圖示
 st.set_page_config(
-    page_title="學生考卷星星成就查詢系統", page_icon="⭐", layout="centered"
+    page_title="網路題庫星星成就查詢系統", page_icon="⭐", layout="centered"
 )
 
-st.title("⭐ 學生考卷星星成就查詢系統")
+st.title("⭐ 網路題庫成就查詢系統")
 st.write(
-    "請在下方輸入您的**學號**，即可查詢您在 10 份考卷中的得分與星星獲得狀況！"
+    "請在下方輸入您的**班號**，即可查詢您在 10 份考卷中的得分與星星獲得狀況！"
 )
 
 # 預設的資料庫檔案名稱 (放在 GitHub 裡的檔案)
