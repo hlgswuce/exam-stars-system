@@ -1,4 +1,5 @@
 import os
+import re
 import pandas as pd
 import streamlit as st
 
@@ -12,6 +13,22 @@ st.write("查詢您在 10 份考卷中的得分與星星獲得狀況！")
 
 # 系統預設讀取放在 GitHub 裡面的成績資料檔
 DATA_PATH = "data.xlsx"
+
+# ---------------------------------------------------------
+# 考卷編號與章節名稱對應字典
+# ---------------------------------------------------------
+EXAM_NAMES = {
+    1: "第一章 緒論",
+    2: "第二章 物質的組成",
+    3: "第二章 物質間的基本交互作用",
+    4: "第三章 物體的運動(運動學部分)",
+    5: "第三章 物體的運動(力學部分)",
+    6: "第四章 電與磁的統一(波動、光)",
+    7: "第四章 電與磁的統一(磁場、磁力、電磁感應)",
+    8: "第五章 能量",
+    9: "第六章 量子現象(光電效應)",
+    10: "第六章 量子現象(物質波、光譜)",
+}
 
 # ---------------------------------------------------------
 # 資料處理核心邏輯
@@ -44,20 +61,36 @@ def process_data(file_path):
 
     total_stars = cond_1 + cond_2 + cond_3
 
+    # 自動解析考卷編號並轉換為單元名稱 (例如 1 -> "1. 第一章 緒論")
+    try:
+      exam_num = int(re.sub(r"\D", "", str(exam_id)))
+      exam_title = f"{exam_num}. {EXAM_NAMES.get(exam_num, str(exam_id))}"
+    except:
+      exam_num = 999
+      exam_title = str(exam_id)
+
     results.append({
         "密碼": str(user_pwd).strip(),
         "班級座號": str(class_seat).strip(),
         "姓名": str(student_name).strip(),
         "考卷編號": exam_id,
+        "考卷名稱": exam_title,
         "獲得星星數": total_stars,
         "條件1(3星)": "✅" if cond_1 > 0 else "❌",
         "條件2(2星)": "✅" if cond_2 > 0 else "❌",
         "條件3(1星)": "✅" if cond_3 > 0 else "❌",
         "最高得分": max_score,
         "總作答次數": total_attempts,
+        "_sort_key": exam_num,  # 用於排序的隱藏鍵
     })
 
-  return pd.DataFrame(results)
+  res_df = pd.DataFrame(results)
+
+  # 自動依考卷 1~10 順序排序
+  if not res_df.empty and "_sort_key" in res_df.columns:
+    res_df = res_df.sort_values("_sort_key").drop(columns=["_sort_key"])
+
+  return res_df
 
 
 # ---------------------------------------------------------
@@ -69,7 +102,7 @@ if os.path.exists(DATA_PATH):
 
     # 輸入框：輸入個人的查詢密碼
     pwd_input = st.text_input(
-        "請在下方輸入您的查詢密碼：", 
+        "請在下方輸入您的查詢密碼：", type="password"
     ).strip()
 
     if pwd_input:
@@ -99,8 +132,9 @@ if os.path.exists(DATA_PATH):
 
         st.markdown("### 📋 10 份考卷詳細達成狀況")
 
+        # 表格顯示欄位：將原本的 "考卷編號" 換成包含詳細名稱的 "考卷名稱"
         display_cols = [
-            "考卷編號",
+            "考卷名稱",
             "獲得星星數",
             "條件1(3星)",
             "條件2(2星)",
@@ -108,7 +142,6 @@ if os.path.exists(DATA_PATH):
             "最高得分",
             "總作答次數",
         ]
-        # 加上 hide_index=True 隱藏最左側索引欄
         st.dataframe(
             student_data[display_cols],
             use_container_width=True,
