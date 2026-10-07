@@ -12,7 +12,7 @@ st.set_page_config(
 # 系統參數設定
 # ---------------------------------------------------------
 DATA_PATH = "data.xlsx"
-TEACHER_PASSWORD = "teacher123"  # 教師登入密碼
+TEACHER_PASSWORD = "N18180306"  # 教師登入密碼
 
 # 考卷編號與章節名稱對應字典
 EXAM_NAMES = {
@@ -114,8 +114,7 @@ if os.path.exists(DATA_PATH):
 
       pwd_input = st.text_input(
           "請在下方輸入您的個人查詢密碼：",
-          type="password",
-          key="student_pwd",
+                    key="student_pwd",
       ).strip()
 
       if pwd_input:
