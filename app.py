@@ -11,11 +11,8 @@ st.set_page_config(
 # ---------------------------------------------------------
 # 系統參數設定
 # ---------------------------------------------------------
-# 系統預設讀取放在 GitHub 裡面的成績資料檔
 DATA_PATH = "data.xlsx"
-
-# 🔑 教師登入密碼 (可自行更改)
-TEACHER_PASSWORD = "N18180306"
+TEACHER_PASSWORD = "teacher123"  # 教師登入密碼
 
 # 考卷編號與章節名稱對應字典
 EXAM_NAMES = {
@@ -31,18 +28,22 @@ EXAM_NAMES = {
     10: "第六章 量子現象(物質波、光譜)",
 }
 
+
+# 輔助函式：將座號中的數字提取出來以進行自然數字排序 (避免 10 排在 2 前面的文字排序問題)
+def get_seat_sort_key(seat_str):
+  nums = re.findall(r"\d+", str(seat_str))
+  return [int(n) for n in nums] if nums else [0]
+
+
 # ---------------------------------------------------------
 # 資料處理核心邏輯
 # ---------------------------------------------------------
-
-
 @st.cache_data
 def process_data(file_path):
   df = pd.read_excel(file_path)
   df.columns = df.columns.str.strip()
 
   results = []
-  # 依「密碼」、「班級座號」、「姓名」、「考卷編號」進行分組
   grouped = df.groupby(["密碼", "班級座號", "姓名", "考卷編號"])
 
   for (user_pwd, class_seat, student_name, exam_id), group in grouped:
@@ -103,7 +104,6 @@ if os.path.exists(DATA_PATH):
   try:
     processed_df = process_data(DATA_PATH)
 
-    # 建立雙頁籤：學生查詢 vs 教師後台
     tab_student, tab_teacher = st.tabs(["🎓 學生查詢", "👩‍🏫 教師後台"])
 
     # =========================================================
@@ -172,11 +172,18 @@ if os.path.exists(DATA_PATH):
       if teacher_pwd == TEACHER_PASSWORD:
         st.success("🔓 教師權限驗證成功！已載入全班數據統計。")
 
-        # 整理全班總覽統計數據
-        unique_students = processed_df[["班級座號", "姓名"]].drop_duplicates()
+        # 整理全班名單 (並依「班級座號」進行數字自然排序)
+        unique_students = processed_df[["班級座號", "姓名"]].drop_duplicates().copy()
+        unique_students["_seat_key"] = unique_students["班級座號"].apply(
+            get_seat_sort_key
+        )
+        unique_students = unique_students.sort_values("_seat_key").drop(
+            columns=["_seat_key"]
+        )
+
         total_students_count = len(unique_students)
 
-        # 算每位學生的總星星數
+        # 計算每位學生的總星星數
         student_star_totals = processed_df.groupby(["班級座號", "姓名"])[
             "獲得星星數"
         ].sum()
@@ -196,7 +203,6 @@ if os.path.exists(DATA_PATH):
 
         st.markdown("---")
 
-        # 切換不同的後台視圖
         view_option = st.radio(
             "請選擇要查看的全班報表類型：",
             [
@@ -207,7 +213,7 @@ if os.path.exists(DATA_PATH):
             horizontal=True,
         )
 
-        # 建立考卷名稱列表 (維持 1~10 正確順序)
+        # 考卷名稱列表 (維持 1~10 正確順序)
         exam_titles = sorted(processed_df["考卷名稱"].unique())
 
         if view_option == "⭐ 全班各考卷『獲得星星數』一覽表":
@@ -221,20 +227,21 @@ if os.path.exists(DATA_PATH):
               aggfunc="first",
           ).fillna(0)
 
-          # 補齊沒有作答的考卷欄位
           for title in exam_titles:
             if title not in pivot_stars.columns:
               pivot_stars[title] = 0
 
-          # 重新排序欄位並計算每位學生的總星星數
           pivot_stars = pivot_stars[exam_titles]
           pivot_stars["總獲得星星數"] = pivot_stars.sum(axis=1)
 
-          st.dataframe(
-              pivot_stars.reset_index(),
-              use_container_width=True,
-              hide_index=True,
+          # 轉為 DataFrame 並依座號自然排序
+          df_stars = pivot_stars.reset_index()
+          df_stars["_seat_key"] = df_stars["班級座號"].apply(get_seat_sort_key)
+          df_stars = df_stars.sort_values("_seat_key").drop(
+              columns=["_seat_key"]
           )
+
+          st.dataframe(df_stars, use_container_width=True, hide_index=True)
 
         elif view_option == "📝 全班各考卷『作答次數』一覽表":
           st.markdown("### 📝 全班各考卷「作答次數」矩陣表")
@@ -247,24 +254,28 @@ if os.path.exists(DATA_PATH):
               aggfunc="first",
           ).fillna(0)
 
-          # 補齊沒有作答的考卷欄位
           for title in exam_titles:
             if title not in pivot_attempts.columns:
               pivot_attempts[title] = 0
 
-          # 重新排序欄位並計算總作答次數
           pivot_attempts = pivot_attempts[exam_titles]
           pivot_attempts["總作答次數"] = pivot_attempts.sum(axis=1)
 
-          st.dataframe(
-              pivot_attempts.reset_index(),
-              use_container_width=True,
-              hide_index=True,
+          # 轉為 DataFrame 並依座號自然排序
+          df_attempts = pivot_attempts.reset_index()
+          df_attempts["_seat_key"] = df_attempts["班級座號"].apply(
+              get_seat_sort_key
           )
+          df_attempts = df_attempts.sort_values("_seat_key").drop(
+              columns=["_seat_key"]
+          )
+
+          st.dataframe(df_attempts, use_container_width=True, hide_index=True)
 
         elif view_option == "🔍 個別學生數據詳細抽查":
           st.markdown("### 🔍 個別學生詳細表現查詢")
 
+          # 依自然排序後的 unique_students 建立下拉選單選單
           student_list = (
               unique_students["班級座號"] + " " + unique_students["姓名"]
           ).tolist()
