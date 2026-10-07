@@ -8,9 +8,7 @@ st.set_page_config(
 )
 
 st.title("⭐ 網路題庫星星成就查詢系統")
-st.write(
-    "查詢您在 10 份考卷中的得分與星星獲得狀況！"
-)
+st.write("查詢您在 10 份考卷中的得分與星星獲得狀況！")
 
 # 系統預設讀取放在 GitHub 裡面的成績資料檔
 DATA_PATH = "data.xlsx"
@@ -26,9 +24,10 @@ def process_data(file_path):
   df.columns = df.columns.str.strip()
 
   results = []
-  grouped = df.groupby(["學號", "姓名", "考卷編號"])
+  # 依「密碼」、「班級座號」、「姓名」、「考卷編號」進行分組
+  grouped = df.groupby(["密碼", "班級座號", "姓名", "考卷編號"])
 
-  for (student_id, student_name, exam_id), group in grouped:
+  for (user_pwd, class_seat, student_name, exam_id), group in grouped:
     total_attempts = len(group)
 
     # 1. 條件一：最高得分 >= 15 得 3 星
@@ -46,7 +45,8 @@ def process_data(file_path):
     total_stars = cond_1 + cond_2 + cond_3
 
     results.append({
-        "學號": str(student_id).strip(),
+        "密碼": str(user_pwd).strip(),
+        "班級座號": str(class_seat).strip(),
         "姓名": str(student_name).strip(),
         "考卷編號": exam_id,
         "獲得星星數": total_stars,
@@ -61,29 +61,36 @@ def process_data(file_path):
 
 
 # ---------------------------------------------------------
-# 學生查詢主畫面（已完全移除老師上傳按鈕，防止學生竄改）
+# 學生查詢主畫面
 # ---------------------------------------------------------
 if os.path.exists(DATA_PATH):
   try:
     processed_df = process_data(DATA_PATH)
 
-    student_id_input = st.text_input("請在下方輸入您的學號+身分證後四碼(例如學號為910123身分證後四碼是5678，則輸入9101235678進行查詢)").strip()
+    # 輸入框：輸入個人的查詢密碼 (加上 type="password" 可以讓輸入的字變成圓點遮罩)
+    pwd_input = st.text_input(
+        "請在下方輸入您的查詢密碼：", type="password"
+    ).strip()
 
-    if student_id_input:
-      student_data = processed_df[processed_df["學號"] == student_id_input]
+    if pwd_input:
+      # 用密碼進行資料比對
+      student_data = processed_df[processed_df["密碼"] == pwd_input]
 
       if not student_data.empty:
+        # 抓取該位學生的「班級座號」與「姓名」
+        class_seat_no = student_data["班級座號"].iloc[0]
         student_name = student_data["姓名"].iloc[0]
         total_earned_stars = student_data["獲得星星數"].sum()
 
+        # 畫面上顯示：班級座號 + 姓名
         st.success(
-            f"🎉 **{student_id_input}  {student_name}** 同學，以下是你的作答統計紀錄"
+            f"🎉 **{class_seat_no} {student_name}** 同學，以下是你的作答統計紀錄"
         )
 
         col1, col2 = st.columns(2)
         with col1:
           st.metric(
-              label="累積獲得總星星數 (滿分 30 星)",
+              label="累積獲得總星星數 (滿分 60 星)",
               value=f"{total_earned_stars} ⭐",
           )
         with col2:
@@ -106,10 +113,10 @@ if os.path.exists(DATA_PATH):
             use_container_width=True,
         )
       else:
-        st.warning("⚠️ 找不到該學號的紀錄，請確認學號是否輸入正確。")
+        st.warning("⚠️ 密碼錯誤或找不到此紀錄，請重新確認後再試。")
   except Exception as e:
     st.error(
-        f"資料讀取錯誤，請檢查資料檔欄位是否包含『學號』、『姓名』、『考卷編號』、『得分』。"
+        f"資料讀取錯誤，請檢查 Excel 檔欄位是否包含：『密碼』、『班級座號』、『姓名』、『考卷編號』、『得分』。"
     )
 else:
   st.info("系統維護中或尚未載入成績資料，請稍後再試。")
