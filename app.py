@@ -29,6 +29,16 @@ EXAM_NAMES = {
 }
 
 
+# 輔助函式：清理字串 (自動去除 Excel 讀取純數字密碼時產生的 .0 尾巴)
+def clean_str(val):
+  if pd.isna(val):
+    return ""
+  s = str(val).strip()
+  if s.endswith(".0"):
+    s = s[:-2]
+  return s
+
+
 # 輔助函式：將座號中的數字提取出來以進行自然數字排序 (避免 10 排在 2 前面的文字排序問題)
 def get_seat_sort_key(seat_str):
   nums = re.findall(r"\d+", str(seat_str))
@@ -71,10 +81,15 @@ def process_data(file_path):
       exam_num = 999
       exam_title = str(exam_id)
 
+    # 乾淨清理字串欄位
+    clean_pwd = clean_str(user_pwd)
+    clean_seat = clean_str(class_seat)
+    clean_name = clean_str(student_name)
+
     results.append({
-        "密碼": str(user_pwd).strip(),
-        "班級座號": str(class_seat).strip(),
-        "姓名": str(student_name).strip(),
+        "密碼": clean_pwd,
+        "班級座號": clean_seat,
+        "姓名": clean_name,
         "考卷編號": exam_id,
         "考卷名稱": exam_title,
         "獲得星星數": total_stars,
@@ -114,10 +129,12 @@ if os.path.exists(DATA_PATH):
 
       pwd_input = st.text_input(
           "請在下方輸入您的個人查詢密碼：",
-                    key="student_pwd",
+         
+          key="student_pwd",
       ).strip()
 
       if pwd_input:
+        # 嚴格僅比對「密碼」欄位
         student_data = processed_df[processed_df["密碼"] == pwd_input]
 
         if not student_data.empty:
