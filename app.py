@@ -128,7 +128,7 @@ if os.path.exists(DATA_PATH):
       st.write("查詢您在 10 份考卷中的得分與星星獲得狀況！")
 
       pwd_input = st.text_input(
-          "請在下方輸入您的個人查詢密碼：",
+          "請在下方輸入您的個人查詢密碼(密碼為學號+身分證後4碼，例如學號為910234身分證後四碼為6666，則輸入9102346666：",
          
           key="student_pwd",
       ).strip()
