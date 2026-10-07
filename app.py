@@ -77,7 +77,7 @@ if os.path.exists(DATA_PATH):
         total_earned_stars = student_data["獲得星星數"].sum()
 
         st.success(
-            f"🎉 **{student_id_input}  {student_name}** 同學好！查詢成功"
+            f"🎉 **{student_id_input}  {student_name}** 同學，以下是你的作答統計紀錄"
         )
 
         col1, col2 = st.columns(2)
