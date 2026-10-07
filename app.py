@@ -15,7 +15,7 @@ st.set_page_config(
 DATA_PATH = "data.xlsx"
 
 # 🔑 教師登入密碼 (可自行更改)
-TEACHER_PASSWORD = "teacher123"
+TEACHER_PASSWORD = "N18180306"
 
 # 考卷編號與章節名稱對應字典
 EXAM_NAMES = {
