@@ -102,7 +102,7 @@ if os.path.exists(DATA_PATH):
 
     # 輸入框：輸入個人的查詢密碼
     pwd_input = st.text_input(
-        "請在下方輸入您的查詢密碼：", type="password"
+        "請在下方輸入您的查詢密碼："
     ).strip()
 
     if pwd_input:
