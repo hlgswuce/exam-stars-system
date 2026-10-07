@@ -67,9 +67,9 @@ if os.path.exists(DATA_PATH):
   try:
     processed_df = process_data(DATA_PATH)
 
-    # 輸入框：輸入個人的查詢密碼 (加上 type="password" 可以讓輸入的字變成圓點遮罩)
+    # 輸入框：輸入個人的查詢密碼 
     pwd_input = st.text_input(
-        "請在下方輸入您的查詢密碼：", type="password"
+        "請在下方輸入您的查詢密碼：", 
     ).strip()
 
     if pwd_input:
