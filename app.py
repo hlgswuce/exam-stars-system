@@ -7,13 +7,13 @@ st.set_page_config(
     page_title="網路題庫星星成就查詢系統", page_icon="⭐", layout="centered"
 )
 
-st.title("⭐ 網路題庫成就查詢系統")
+st.title("⭐ 網路題庫星星成就查詢系統")
 st.write(
-    "請在下方輸入您的**班號**，即可查詢您在 10 份考卷中的得分與星星獲得狀況！"
+    "請在下方輸入您的學號+身分證後四碼，即可查詢您在 10 份考卷中的得分與星星獲得狀況！(例如學號為910123身分證後四碼是5678，則輸入9101235678進行查詢)"
 )
 
-# 預設的資料庫檔案名稱 (放在 GitHub 裡的檔案)
-DEFAULT_EXCEL_PATH = "data.xlsx"
+# 系統預設讀取放在 GitHub 裡面的成績資料檔
+DATA_PATH = "data.xlsx"
 
 # ---------------------------------------------------------
 # 資料處理核心邏輯
@@ -21,8 +21,8 @@ DEFAULT_EXCEL_PATH = "data.xlsx"
 
 
 @st.cache_data
-def process_data(file):
-  df = pd.read_excel(file)
+def process_data(file_path):
+  df = pd.read_excel(file_path)
   df.columns = df.columns.str.strip()
 
   results = []
@@ -31,17 +31,17 @@ def process_data(file):
   for (student_id, student_name, exam_id), group in grouped:
     total_attempts = len(group)
 
-    # 1. 條件一：得分 15 分以上可得 1.5 顆星
+    # 1. 條件一：最高得分 >= 15 得 3 星
     max_score = group["得分"].max()
-    cond_1 = 1.5 if max_score >= 15 else 0.0
+    cond_1 = 3 if max_score >= 15 else 0.0
 
-    # 2. 條件二：得分 20 分以上滿 3 次可得 1 顆星
-    valid_attempts = (group["得分"] >= 20).sum()
-    cond_2 = 1.0 if valid_attempts >= 3 else 0.0
+    # 2. 條件二：得分 >= 23 達 3 次以上得 2 星
+    valid_attempts = (group["得分"] >= 23).sum()
+    cond_2 = 2 if valid_attempts >= 3 else 0.0
 
-    # 3. 條件三：滿分 30 分可得 0.5 顆星
+    # 3. 條件三：滿分 30 分得 1 星
     has_full_score = (group["得分"] == 30).any()
-    cond_3 = 0.5 if has_full_score else 0.0
+    cond_3 = 1 if has_full_score else 0.0
 
     total_stars = cond_1 + cond_2 + cond_3
 
@@ -49,46 +49,25 @@ def process_data(file):
         "學號": str(student_id).strip(),
         "姓名": str(student_name).strip(),
         "考卷編號": exam_id,
-        "總作答次數": total_attempts,
-        "最高得分": max_score,
-        "有效次數(≥20分)": valid_attempts,
-        "是否有滿分": "是" if has_full_score else "否",
-        "條件1(1.5星)": "✅" if cond_1 > 0 else "❌",
-        "條件2(1.0星)": "✅" if cond_2 > 0 else "❌",
-        "條件3(0.5星)": "✅" if cond_3 > 0 else "❌",
         "獲得星星數": total_stars,
+        "條件1(3星)": "✅" if cond_1 > 0 else "❌",
+        "條件2(2星)": "✅" if cond_2 > 0 else "❌",
+        "條件3(1星)": "✅" if cond_3 > 0 else "❌",
+        "最高得分": max_score,
+        "總作答次數": total_attempts,
     })
 
   return pd.DataFrame(results)
 
 
 # ---------------------------------------------------------
-# 資料載入優先順序判斷
+# 學生查詢主畫面（已完全移除老師上傳按鈕，防止學生竄改）
 # ---------------------------------------------------------
-file_to_process = None
-
-# 1. 先看老師有沒有手動臨時上傳新 Excel
-with st.sidebar:
-  st.header("老師管理專區")
-  uploaded_file = st.file_uploader(
-      "更新/覆蓋 Excel 檔 (.xlsx)", type=["xlsx"]
-  )
-  st.markdown("---")
-
-if uploaded_file is not None:
-  file_to_process = uploaded_file
-elif os.path.exists(DEFAULT_EXCEL_PATH):
-  # 2. 如果沒上傳，自動讀取 GitHub 裡的預設檔案 data.xlsx
-  file_to_process = DEFAULT_EXCEL_PATH
-
-# ---------------------------------------------------------
-# 學生查詢主畫面
-# ---------------------------------------------------------
-if file_to_process is not None:
+if os.path.exists(DATA_PATH):
   try:
-    processed_df = process_data(file_to_process)
+    processed_df = process_data(DATA_PATH)
 
-    student_id_input = st.text_input("請輸入學號進行查詢：").strip()
+    student_id_input = st.text_input("請在下方輸入您的學號+身分證後四碼(例如學號為910123身分證後四碼是5678，則輸入9101235678進行查詢)").strip()
 
     if student_id_input:
       student_data = processed_df[processed_df["學號"] == student_id_input]
@@ -98,7 +77,7 @@ if file_to_process is not None:
         total_earned_stars = student_data["獲得星星數"].sum()
 
         st.success(
-            f"🎉 **{student_name}** 同學好！查詢成功（學號：{student_id_input}）"
+            f"🎉 **{student_id_input}{student_name}** 同學好！查詢成功"
         )
 
         col1, col2 = st.columns(2)
@@ -115,14 +94,12 @@ if file_to_process is not None:
 
         display_cols = [
             "考卷編號",
+            "獲得星星數",
+            "條件1(3星)",
+            "條件2(2星)",
+            "條件3(1星)",
             "最高得分",
             "總作答次數",
-            "有效次數(≥20分)",
-            "是否有滿分",
-            "條件1(1.5星)",
-            "條件2(1.0星)",
-            "條件3(0.5星)",
-            "獲得星星數",
         ]
         st.dataframe(
             student_data[display_cols].reset_index(drop=True),
@@ -132,7 +109,7 @@ if file_to_process is not None:
         st.warning("⚠️ 找不到該學號的紀錄，請確認學號是否輸入正確。")
   except Exception as e:
     st.error(
-        f"讀取檔案時發生錯誤，請確認欄位是否有『學號』、『姓名』、『考卷編號』、『得分』。錯誤訊息: {e}"
+        f"資料讀取錯誤，請檢查資料檔欄位是否包含『學號』、『姓名』、『考卷編號』、『得分』。"
     )
 else:
-  st.info("目前系統尚未載入成績資料，請稍後再試。")
+  st.info("系統維護中或尚未載入成績資料，請稍後再試。")
