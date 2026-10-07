@@ -67,9 +67,9 @@ if os.path.exists(DATA_PATH):
   try:
     processed_df = process_data(DATA_PATH)
 
-    # 輸入框：輸入個人的查詢密碼 
+    # 輸入框：輸入個人的查詢密碼
     pwd_input = st.text_input(
-        "請在下方輸入您的查詢密碼：", 
+        "請在下方輸入您的查詢密碼：", type="password"
     ).strip()
 
     if pwd_input:
@@ -108,11 +108,12 @@ if os.path.exists(DATA_PATH):
             "最高得分",
             "總作答次數",
         ]
-st.dataframe(
-    student_data[display_cols],
-    use_container_width=True,
-    hide_index=True, 
-)
+        # 加上 hide_index=True 隱藏最左側索引欄
+        st.dataframe(
+            student_data[display_cols],
+            use_container_width=True,
+            hide_index=True,
+        )
       else:
         st.warning("⚠️ 密碼錯誤或找不到此紀錄，請重新確認後再試。")
   except Exception as e:
