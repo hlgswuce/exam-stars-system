@@ -108,10 +108,11 @@ if os.path.exists(DATA_PATH):
             "最高得分",
             "總作答次數",
         ]
-        st.dataframe(
-            student_data[display_cols].reset_index(drop=True),
-            use_container_width=True,
-        )
+st.dataframe(
+    student_data[display_cols],
+    use_container_width=True,
+    hide_index=True, 
+)
       else:
         st.warning("⚠️ 密碼錯誤或找不到此紀錄，請重新確認後再試。")
   except Exception as e:
