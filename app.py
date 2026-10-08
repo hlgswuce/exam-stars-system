@@ -130,8 +130,8 @@ if os.path.exists(DATA_PATH):
 
       with st.form("student_login_form"):
         pwd_input = st.text_input(
-            "請在下方輸入您的個人查詢密碼：",
-            type="password",
+            "請在下方輸入您的個人查詢密碼(密碼為學號+身分證後4碼，例如學號為910234身分證後四碼為6666，則輸入9102346666",
+            
         ).strip()
 
         submit_button = st.form_submit_button("🔍 點擊查詢")
