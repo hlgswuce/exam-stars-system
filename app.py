@@ -131,7 +131,7 @@ if os.path.exists(DATA_PATH):
       with st.form("student_login_form"):
         pwd_input = st.text_input(
             "請在下方輸入您的個人查詢密碼(密碼為學號+身分證後4碼，例如學號為910234身分證後四碼為6666，則輸入9102346666",
-        
+            
         ).strip()
 
         submit_button = st.form_submit_button("🔍 點擊查詢")
@@ -170,10 +170,14 @@ if os.path.exists(DATA_PATH):
           p2_score = round((p2_stars / 12) * 100, 1)
           p3_score = round((p3_stars / 18) * 100, 1)
           
+          # 計算總平時成績
+          total_score = round((p1_score * 0.5) + (p2_score * 0.2) + (p3_score * 0.3), 1)
+          
           score_data = [
               {"段考次別": "第一次段考 (考卷 1~5)", "滿分星星數": 30, "已獲星星數": p1_stars, "平時成績分數": f"{p1_score:.1f}"},
               {"段考次別": "第二次段考 (考卷 6~7)", "滿分星星數": 12, "已獲星星數": p2_stars, "平時成績分數": f"{p2_score:.1f}"},
               {"段考次別": "第三次段考 (考卷 8~10)", "滿分星星數": 18, "已獲星星數": p3_stars, "平時成績分數": f"{p3_score:.1f}"},
+              {"段考次別": "**學期總平時成績**", "滿分星星數": "-", "已獲星星數": "-", "平時成績分數": f"**{total_score:.1f}**"}
           ]
           
           score_df = pd.DataFrame(score_data)
@@ -380,23 +384,28 @@ if os.path.exists(DATA_PATH):
               p1_score = round((p1_stars / 30) * 100, 1)
               p2_score = round((p2_stars / 12) * 100, 1)
               p3_score = round((p3_stars / 18) * 100, 1)
+
+              # 計算總平時成績
+              total_score = round((p1_score * 0.5) + (p2_score * 0.2) + (p3_score * 0.3), 1)
               
               scores_data.append({
                   "班級座號": seat,
                   "姓名": name,
                   "第一次段考星數(滿30)": p1_stars,
-                  "第一次段考成績": p1_score,
+                  "第一次段考範圍平時成績": p1_score,
                   "第二次段考星數(滿12)": p2_stars,
-                  "第二次段考成績": p2_score,
+                  "第二次段考範圍平時成績": p2_score,
                   "第三次段考星數(滿18)": p3_stars,
-                  "第三次段考成績": p3_score,
+                  "第三次段考範圍平時成績": p3_score,
+                  "學期總平時成績": total_score
               })
               
           df_scores = pd.DataFrame(scores_data)
           
-          df_scores["第一次段考成績"] = df_scores["第一次段考成績"].apply(lambda x: f"{x:.1f}")
-          df_scores["第二次段考成績"] = df_scores["第二次段考成績"].apply(lambda x: f"{x:.1f}")
-          df_scores["第三次段考成績"] = df_scores["第三次段考成績"].apply(lambda x: f"{x:.1f}")
+          df_scores["第一次段考範圍平時成績"] = df_scores["第一次段考範圍平時成績"].apply(lambda x: f"{x:.1f}")
+          df_scores["第二次段考範圍平時成績"] = df_scores["第二次段考範圍平時成績"].apply(lambda x: f"{x:.1f}")
+          df_scores["第三次段考範圍平時成績"] = df_scores["第三次段考範圍平時成績"].apply(lambda x: f"{x:.1f}")
+          df_scores["學期總平時成績"] = df_scores["學期總平時成績"].apply(lambda x: f"{x:.1f}")
           
           st.dataframe(df_scores, use_container_width=True, hide_index=True)
 
