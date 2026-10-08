@@ -274,6 +274,7 @@ if os.path.exists(DATA_PATH):
             [
                 "⭐ 全班各考卷『獲得星星數』一覽表",
                 "📝 全班各考卷『作答次數』一覽表",
+                "📊 全班各次段考『平時成績換算』一覽表", # 新增選項
                 "🔍 個別學生數據詳細抽查",
             ],
             horizontal=True,
@@ -337,6 +338,46 @@ if os.path.exists(DATA_PATH):
           )
 
           st.dataframe(df_attempts, use_container_width=True, hide_index=True)
+          
+        # --- 新增區塊：全班段考平時成績一覽表 ---
+        elif view_option == "📊 全班各次段考『平時成績換算』一覽表":
+          st.markdown("### 📊 全班各次段考「平時成績換算」一覽表")
+          
+          # 計算每位學生在各階段獲得的星星數
+          scores_data = []
+          for _, student in unique_students.iterrows():
+              seat = student["班級座號"]
+              name = student["姓名"]
+              
+              student_data = processed_df[(processed_df["班級座號"] == seat) & (processed_df["姓名"] == name)]
+              
+              p1_stars = student_data[student_data["考卷序號"].isin([1, 2, 3, 4, 5])]["獲得星星數"].sum()
+              p2_stars = student_data[student_data["考卷序號"].isin([6, 7])]["獲得星星數"].sum()
+              p3_stars = student_data[student_data["考卷序號"].isin([8, 9, 10])]["獲得星星數"].sum()
+              
+              p1_score = round((p1_stars / 30) * 100, 1)
+              p2_score = round((p2_stars / 12) * 100, 1)
+              p3_score = round((p3_stars / 18) * 100, 1)
+              
+              scores_data.append({
+                  "班級座號": seat,
+                  "姓名": name,
+                  "第一次段考星數(滿30)": p1_stars,
+                  "第一次段考成績": p1_score,
+                  "第二次段考星數(滿12)": p2_stars,
+                  "第二次段考成績": p2_score,
+                  "第三次段考星數(滿18)": p3_stars,
+                  "第三次段考成績": p3_score,
+              })
+              
+          df_scores = pd.DataFrame(scores_data)
+          
+          # 格式化成績為 1 位小數的字串，讓顯示更整齊
+          df_scores["第一次段考成績"] = df_scores["第一次段考成績"].apply(lambda x: f"{x:.1f}")
+          df_scores["第二次段考成績"] = df_scores["第二次段考成績"].apply(lambda x: f"{x:.1f}")
+          df_scores["第三次段考成績"] = df_scores["第三次段考成績"].apply(lambda x: f"{x:.1f}")
+          
+          st.dataframe(df_scores, use_container_width=True, hide_index=True)
 
         elif view_option == "🔍 個別學生數據詳細抽查":
           st.markdown("### 🔍 個別學生詳細表現查詢")
