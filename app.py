@@ -131,7 +131,7 @@ if os.path.exists(DATA_PATH):
       with st.form("student_login_form"):
         pwd_input = st.text_input(
             "請在下方輸入您的個人查詢密碼(密碼為學號+身分證後4碼，例如學號為910234身分證後四碼為6666，則輸入9102346666",
-            
+        
         ).strip()
 
         submit_button = st.form_submit_button("🔍 點擊查詢")
@@ -159,15 +159,13 @@ if os.path.exists(DATA_PATH):
             exam_count = len(student_data)
             st.metric(label="已練習考卷數", value=f"{exam_count} / 10 份")
 
-          # --- 新增區塊：段考平時成績換算 ---
+          # --- 區塊：段考平時成績換算 ---
           st.markdown("### 📊 各次段考平時成績換算")
           
-          # 計算各範圍的獲得星星數
           p1_stars = student_data[student_data["考卷序號"].isin([1, 2, 3, 4, 5])]["獲得星星數"].sum()
           p2_stars = student_data[student_data["考卷序號"].isin([6, 7])]["獲得星星數"].sum()
           p3_stars = student_data[student_data["考卷序號"].isin([8, 9, 10])]["獲得星星數"].sum()
           
-          # 計算轉換分數 (滿分100，四捨五入到小數點後第一位)
           p1_score = round((p1_stars / 30) * 100, 1)
           p2_score = round((p2_stars / 12) * 100, 1)
           p3_score = round((p3_stars / 18) * 100, 1)
@@ -181,8 +179,34 @@ if os.path.exists(DATA_PATH):
           score_df = pd.DataFrame(score_data)
           st.dataframe(score_df, use_container_width=True, hide_index=True)
 
-          # 顯示個別考卷詳細狀況
+          # --- 區塊：個別考卷詳細狀況 (補齊 1~10 份) ---
           st.markdown("### 📋 10 份考卷詳細達成狀況")
+          
+          full_exam_data = []
+          # 1. 強制加入 1~10 份考卷
+          for i in range(1, 11):
+              exam_record = student_data[student_data["考卷序號"] == i]
+              if not exam_record.empty:
+                  # 有資料則取真實數據
+                  full_exam_data.append(exam_record.iloc[0].to_dict())
+              else:
+                  # 沒資料則補上 0 與 ❌
+                  full_exam_data.append({
+                      "考卷名稱": f"{i}. {EXAM_NAMES.get(i, '')}",
+                      "獲得星星數": 0,
+                      "條件1(3星)": "❌",
+                      "條件2(2星)": "❌",
+                      "條件3(1星)": "❌",
+                      "最高得分": 0,
+                      "總作答次數": 0
+                  })
+          
+          # 2. 如果有超出 1~10 以外的考卷（防呆機制）也補在最後面
+          other_exams = student_data[~student_data["考卷序號"].isin(range(1, 11))]
+          for _, row in other_exams.iterrows():
+              full_exam_data.append(row.to_dict())
+              
+          full_exam_df = pd.DataFrame(full_exam_data)
 
           display_cols = [
               "考卷名稱",
@@ -194,7 +218,7 @@ if os.path.exists(DATA_PATH):
               "總作答次數",
           ]
           st.dataframe(
-              student_data[display_cols],
+              full_exam_df[display_cols],
               use_container_width=True,
               hide_index=True,
           )
@@ -207,11 +231,9 @@ if os.path.exists(DATA_PATH):
     with tab_teacher:
       st.subheader("👩‍🏫 教師管理專區")
 
-      # 1. 初始化教師登入狀態
       if "teacher_logged_in" not in st.session_state:
         st.session_state["teacher_logged_in"] = False
 
-      # 2. 未登入狀態：顯示登入表單
       if not st.session_state["teacher_logged_in"]:
         with st.form("teacher_login_form"):
           teacher_pwd = st.text_input(
@@ -222,11 +244,10 @@ if os.path.exists(DATA_PATH):
         if teacher_submit:
           if teacher_pwd == TEACHER_PASSWORD:
             st.session_state["teacher_logged_in"] = True
-            st.rerun()  # 登入成功後刷新頁面進入後台
+            st.rerun()
           else:
             st.error("⚠️ 教師密碼不正確，請重新輸入。")
 
-      # 3. 已登入狀態：顯示後台數據與登出按鈕
       if st.session_state["teacher_logged_in"]:
         top_col1, top_col2 = st.columns([8, 2])
         with top_col1:
@@ -236,7 +257,6 @@ if os.path.exists(DATA_PATH):
             st.session_state["teacher_logged_in"] = False
             st.rerun()
 
-        # 整理全班名單 (並依「班級座號」進行數字自然排序)
         unique_students = (
             processed_df[["班級座號", "姓名"]].drop_duplicates().copy()
         )
@@ -249,7 +269,6 @@ if os.path.exists(DATA_PATH):
 
         total_students_count = len(unique_students)
 
-        # 計算每位學生的總星星數
         student_star_totals = processed_df.groupby(["班級座號", "姓名"])[
             "獲得星星數"
         ].sum()
@@ -260,7 +279,6 @@ if os.path.exists(DATA_PATH):
             student_star_totals.max() if not student_star_totals.empty else 0
         )
 
-        # 班級整體指標列
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("全班總人數", f"{total_students_count} 人")
         m2.metric("班級平均星星數", f"{avg_stars:.1f} ⭐")
@@ -274,14 +292,22 @@ if os.path.exists(DATA_PATH):
             [
                 "⭐ 全班各考卷『獲得星星數』一覽表",
                 "📝 全班各考卷『作答次數』一覽表",
-                "📊 全班各次段考『平時成績換算』一覽表", # 新增選項
+                "📊 全班各次段考『平時成績換算』一覽表",
                 "🔍 個別學生數據詳細抽查",
             ],
             horizontal=True,
         )
 
-        # 考卷名稱列表 (維持 1~10 正確順序)
-        exam_titles = sorted(processed_df["考卷名稱"].unique())
+        # 確保大表的欄位必定包含 1~10，不會因為全班都沒寫某張考卷而遺漏該欄位
+        base_exam_titles = [f"{i}. {EXAM_NAMES[i]}" for i in range(1, 11)]
+        existing_exam_titles = sorted(processed_df["考卷名稱"].unique())
+        
+        exam_titles = []
+        for t in base_exam_titles:
+            exam_titles.append(t)
+        for t in existing_exam_titles:
+            if t not in exam_titles:
+                exam_titles.append(t)
 
         if view_option == "⭐ 全班各考卷『獲得星星數』一覽表":
           st.markdown("### ⭐ 全班各考卷「獲得星星數」矩陣表")
@@ -301,7 +327,6 @@ if os.path.exists(DATA_PATH):
           pivot_stars = pivot_stars[exam_titles]
           pivot_stars["總獲得星星數"] = pivot_stars.sum(axis=1)
 
-          # 轉為 DataFrame 並依座號自然排序
           df_stars = pivot_stars.reset_index()
           df_stars["_seat_key"] = df_stars["班級座號"].apply(get_seat_sort_key)
           df_stars = df_stars.sort_values("_seat_key").drop(
@@ -328,7 +353,6 @@ if os.path.exists(DATA_PATH):
           pivot_attempts = pivot_attempts[exam_titles]
           pivot_attempts["總作答次數"] = pivot_attempts.sum(axis=1)
 
-          # 轉為 DataFrame 並依座號自然排序
           df_attempts = pivot_attempts.reset_index()
           df_attempts["_seat_key"] = df_attempts["班級座號"].apply(
               get_seat_sort_key
@@ -339,11 +363,9 @@ if os.path.exists(DATA_PATH):
 
           st.dataframe(df_attempts, use_container_width=True, hide_index=True)
           
-        # --- 新增區塊：全班段考平時成績一覽表 ---
         elif view_option == "📊 全班各次段考『平時成績換算』一覽表":
           st.markdown("### 📊 全班各次段考「平時成績換算」一覽表")
           
-          # 計算每位學生在各階段獲得的星星數
           scores_data = []
           for _, student in unique_students.iterrows():
               seat = student["班級座號"]
@@ -372,7 +394,6 @@ if os.path.exists(DATA_PATH):
               
           df_scores = pd.DataFrame(scores_data)
           
-          # 格式化成績為 1 位小數的字串，讓顯示更整齊
           df_scores["第一次段考成績"] = df_scores["第一次段考成績"].apply(lambda x: f"{x:.1f}")
           df_scores["第二次段考成績"] = df_scores["第二次段考成績"].apply(lambda x: f"{x:.1f}")
           df_scores["第三次段考成績"] = df_scores["第三次段考成績"].apply(lambda x: f"{x:.1f}")
@@ -382,7 +403,6 @@ if os.path.exists(DATA_PATH):
         elif view_option == "🔍 個別學生數據詳細抽查":
           st.markdown("### 🔍 個別學生詳細表現查詢")
 
-          # 依自然排序後的 unique_students 建立下拉選單
           student_list = (
               unique_students["班級座號"] + " " + unique_students["姓名"]
           ).tolist()
@@ -394,6 +414,29 @@ if os.path.exists(DATA_PATH):
                 (processed_df["班級座號"] == seat)
                 & (processed_df["姓名"] == name)
             ]
+            
+            # --- 教師抽查畫面也同樣補齊 1~10 份考卷 ---
+            full_exam_data_teacher = []
+            for i in range(1, 11):
+                exam_record = selected_data[selected_data["考卷序號"] == i]
+                if not exam_record.empty:
+                    full_exam_data_teacher.append(exam_record.iloc[0].to_dict())
+                else:
+                    full_exam_data_teacher.append({
+                        "考卷名稱": f"{i}. {EXAM_NAMES.get(i, '')}",
+                        "獲得星星數": 0,
+                        "條件1(3星)": "❌",
+                        "條件2(2星)": "❌",
+                        "條件3(1星)": "❌",
+                        "最高得分": 0,
+                        "總作答次數": 0
+                    })
+                    
+            other_exams_teacher = selected_data[~selected_data["考卷序號"].isin(range(1, 11))]
+            for _, row in other_exams_teacher.iterrows():
+                full_exam_data_teacher.append(row.to_dict())
+                
+            full_exam_df_teacher = pd.DataFrame(full_exam_data_teacher)
 
             display_cols = [
                 "考卷名稱",
@@ -405,7 +448,7 @@ if os.path.exists(DATA_PATH):
                 "總作答次數",
             ]
             st.dataframe(
-                selected_data[display_cols],
+                full_exam_df_teacher[display_cols],
                 use_container_width=True,
                 hide_index=True,
             )
