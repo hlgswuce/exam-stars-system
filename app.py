@@ -91,6 +91,7 @@ def process_data(file_path):
         "班級座號": clean_seat,
         "姓名": clean_name,
         "考卷編號": exam_id,
+        "考卷序號": exam_num,  # 保留純數字序號方便計算平時成績範圍
         "考卷名稱": exam_title,
         "獲得星星數": total_stars,
         "條件1(3星)": "✅" if cond_1 > 0 else "❌",
@@ -129,8 +130,8 @@ if os.path.exists(DATA_PATH):
 
       with st.form("student_login_form"):
         pwd_input = st.text_input(
-            "請在下方輸入您的個人查詢密碼(密碼為學號+身分證後4碼，例如學號為910234身分證後四碼為6666，則輸入9102346666：",
-            
+            "請在下方輸入您的個人查詢密碼：",
+            type="password",
         ).strip()
 
         submit_button = st.form_submit_button("🔍 點擊查詢")
@@ -147,6 +148,7 @@ if os.path.exists(DATA_PATH):
               f"🎉 **{class_seat_no} {student_name}** 同學，以下是你的作答統計紀錄"
           )
 
+          # 顯示總覽數據
           col1, col2 = st.columns(2)
           with col1:
             st.metric(
@@ -157,6 +159,29 @@ if os.path.exists(DATA_PATH):
             exam_count = len(student_data)
             st.metric(label="已練習考卷數", value=f"{exam_count} / 10 份")
 
+          # --- 新增區塊：段考平時成績換算 ---
+          st.markdown("### 📊 各次段考平時成績換算")
+          
+          # 計算各範圍的獲得星星數
+          p1_stars = student_data[student_data["考卷序號"].isin([1, 2, 3, 4, 5])]["獲得星星數"].sum()
+          p2_stars = student_data[student_data["考卷序號"].isin([6, 7])]["獲得星星數"].sum()
+          p3_stars = student_data[student_data["考卷序號"].isin([8, 9, 10])]["獲得星星數"].sum()
+          
+          # 計算轉換分數 (滿分100，四捨五入到小數點後第一位)
+          p1_score = round((p1_stars / 30) * 100, 1)
+          p2_score = round((p2_stars / 12) * 100, 1)
+          p3_score = round((p3_stars / 18) * 100, 1)
+          
+          score_data = [
+              {"段考次別": "第一次段考 (考卷 1~5)", "滿分星星數": 30, "已獲星星數": p1_stars, "平時成績分數": f"{p1_score:.1f}"},
+              {"段考次別": "第二次段考 (考卷 6~7)", "滿分星星數": 12, "已獲星星數": p2_stars, "平時成績分數": f"{p2_score:.1f}"},
+              {"段考次別": "第三次段考 (考卷 8~10)", "滿分星星數": 18, "已獲星星數": p3_stars, "平時成績分數": f"{p3_score:.1f}"},
+          ]
+          
+          score_df = pd.DataFrame(score_data)
+          st.dataframe(score_df, use_container_width=True, hide_index=True)
+
+          # 顯示個別考卷詳細狀況
           st.markdown("### 📋 10 份考卷詳細達成狀況")
 
           display_cols = [
