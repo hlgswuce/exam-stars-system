@@ -128,7 +128,7 @@ if os.path.exists(DATA_PATH):
     # 分頁一：🎓 學生個人查詢
     # =========================================================
     with tab_student:
-      st.write("查詢您在 10 份考卷中的得分與星星獲得狀況！")
+      st.write("查詢您在 10 份考卷中的得分與星星獲得狀況！此系統查詢結果非即時更新，最後更新時間為2026/10/9 13:50")
 
       with st.form("student_login_form"):
         pwd_input = st.text_input(
