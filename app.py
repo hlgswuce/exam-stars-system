@@ -46,10 +46,10 @@ def get_seat_sort_key(seat_str):
 
 
 # ---------------------------------------------------------
-# 資料處理核心邏輯
+# 資料處理核心邏輯 (加入 modified_time 參數來自動偵測檔案變更)
 # ---------------------------------------------------------
 @st.cache_data
-def process_data(file_path):
+def process_data(file_path, modified_time):
   df = pd.read_excel(file_path)
   df.columns = df.columns.str.strip()
 
@@ -118,7 +118,9 @@ st.title("⭐ 網路題庫星星成就查詢系統")
 
 if os.path.exists(DATA_PATH):
   try:
-    processed_df = process_data(DATA_PATH)
+    # 偵測 Excel 檔案最後修改時間，如果檔案被置換，時間會變，系統就會自動重新整理快取！
+    file_mtime = os.path.getmtime(DATA_PATH)
+    processed_df = process_data(DATA_PATH, file_mtime)
 
     tab_student, tab_teacher = st.tabs(["🎓 學生查詢", "👩‍🏫 教師後台"])
 
@@ -131,7 +133,7 @@ if os.path.exists(DATA_PATH):
       with st.form("student_login_form"):
         pwd_input = st.text_input(
             "請在下方輸入您的個人查詢密碼(密碼為學號+身分證後4碼，例如學號為910234身分證後四碼為6666，則輸入9102346666",
-            
+        
         ).strip()
 
         submit_button = st.form_submit_button("🔍 點擊查詢")
