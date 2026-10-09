@@ -114,7 +114,7 @@ def process_data(file_path, modified_time):
 # ---------------------------------------------------------
 # 主畫面頁面佈局
 # ---------------------------------------------------------
-st.title("⭐ 網路題庫星星成就查詢系統")
+st.title("⭐ 網路題庫星星成就查詢系統(非即時更新)")
 
 if os.path.exists(DATA_PATH):
   try:
@@ -136,7 +136,7 @@ if os.path.exists(DATA_PATH):
         
         ).strip()
 
-        submit_button = st.form_submit_button("🔍 點擊查詢")
+        submit_button = st.form_submit_button("🔍 查詢(非即時更新!)")
 
       if submit_button and pwd_input:
         student_data = processed_df[processed_df["密碼"] == pwd_input]
