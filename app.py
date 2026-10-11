@@ -4,7 +4,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-# 設定網頁標題與寬螢幕版面 (wide layout 方便觀看全班大表)
+# 設定網頁標題與寬螢幕版面 (wide layout 方便觀看全體大表)
 st.set_page_config(
     page_title="網路題庫星星成就查詢系統", page_icon="⭐", layout="wide"
 )
@@ -59,7 +59,7 @@ def draw_distribution_chart(df, x_col, y_col, student_val=None, title=""):
         alt.value("#1F77B4"),  # 標準藍色
     )
   else:
-    chart_df["highlight"] = "全班同學"
+    chart_df["highlight"] = "全體同學"
     color_condition = alt.value("#1F77B4")
 
   chart = (
@@ -306,7 +306,7 @@ if os.path.exists(DATA_PATH):
 
           st.markdown("---")
           st.markdown(
-              "### 📊 全班表現分佈與您的位置 (紅色柱子為您目前的位置)"
+              "### 📊 全體表現分佈與您的位置 (紅色柱子為您目前的位置)"
           )
 
           st.markdown("#### 🌟 總表")
@@ -325,7 +325,7 @@ if os.path.exists(DATA_PATH):
                   "總星星數",
                   "人數",
                   student_val=total_earned_stars,
-                  title="全班「總星星數與人數」關係圖",
+                  title="全體「總星星數與人數」關係圖",
               ),
               use_container_width=True,
           )
@@ -422,7 +422,7 @@ if os.path.exists(DATA_PATH):
       if st.session_state["teacher_logged_in"]:
         top_col1, top_col2 = st.columns([8, 2])
         with top_col1:
-          st.success("🔓 教師權限驗證成功！已載入全班數據統計。")
+          st.success("🔓 教師權限驗證成功！已載入全體數據統計。")
         with top_col2:
           if st.button("🔒 登出後台"):
             st.session_state["teacher_logged_in"] = False
@@ -451,27 +451,27 @@ if os.path.exists(DATA_PATH):
         )
 
         m1, m2, m3, m4 = st.columns(4)
-        m1.metric("全班總人數", f"{total_students_count} 人")
+        m1.metric("全體總人數", f"{total_students_count} 人")
         m2.metric("班級平均星星數", f"{avg_stars:.1f} ⭐")
-        m3.metric("全班最高星星數", f"{max_stars:.1f} ⭐")
+        m3.metric("全體最高星星數", f"{max_stars:.1f} ⭐")
         m4.metric("總累計作答人次", f"{processed_df['總作答次數'].sum()} 次")
 
         st.markdown("---")
 
         view_option = st.radio(
-            "請選擇要查看的全班報表類型：",
+            "請選擇要查看的全體報表類型：",
             [
-                "⭐ 全班各考卷『獲得星星數』一覽表",
-                "📝 全班各考卷『作答次數』一覽表",
-                "📊 全班各次段考『平時成績換算』一覽表",
+                "⭐ 全體各考卷『獲得星星數』一覽表",
+                "📝 全體各考卷『作答次數』一覽表",
+                "📊 全體各次段考『平時成績換算』一覽表",
                 "🔍 個別學生數據詳細抽查",
                 "📈 各考卷與總星數分佈圖 (共11張圖)",
             ],
             horizontal=True,
         )
 
-        if view_option == "⭐ 全班各考卷『獲得星星數』一覽表":
-          st.markdown("### ⭐ 全班各考卷「獲得星星數」矩陣表")
+        if view_option == "⭐ 全體各考卷『獲得星星數』一覽表":
+          st.markdown("### ⭐ 全體各考卷「獲得星星數」矩陣表")
 
           pivot_stars = pd.pivot_table(
               processed_df,
@@ -496,8 +496,8 @@ if os.path.exists(DATA_PATH):
 
           st.dataframe(df_stars, use_container_width=True, hide_index=True)
 
-        elif view_option == "📝 全班各考卷『作答次數』一覽表":
-          st.markdown("### 📝 全班各考卷「作答次數」矩陣表")
+        elif view_option == "📝 全體各考卷『作答次數』一覽表":
+          st.markdown("### 📝 全體各考卷「作答次數」矩陣表")
 
           pivot_attempts = pd.pivot_table(
               processed_df,
@@ -524,8 +524,8 @@ if os.path.exists(DATA_PATH):
 
           st.dataframe(df_attempts, use_container_width=True, hide_index=True)
 
-        elif view_option == "📊 全班各次段考『平時成績換算』一覽表":
-          st.markdown("### 📊 全班各次段考「平時成績換算」一覽表")
+        elif view_option == "📊 全體各次段考『平時成績換算』一覽表":
+          st.markdown("### 📊 全體各次段考「平時成績換算」一覽表")
 
           scores_data = []
           for _, student in unique_students.iterrows():
@@ -640,7 +640,7 @@ if os.path.exists(DATA_PATH):
 
         elif view_option == "📈 各考卷與總星數分佈圖 (共11張圖)":
           st.markdown(
-              "### 📊 全班表現分佈圖表總覽 (總表分佈 + 10張各考卷分佈)"
+              "### 📊 全體表現分佈圖表總覽 (總表分佈 + 10張各考卷分佈)"
           )
 
           st.markdown("---")
@@ -660,7 +660,7 @@ if os.path.exists(DATA_PATH):
                   df_total_chart,
                   "總星星數",
                   "人數",
-                  title="全班「總星星數與人數」關係圖",
+                  title="全體「總星星數與人數」關係圖",
               ),
               use_container_width=True,
           )
