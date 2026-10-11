@@ -128,12 +128,13 @@ if os.path.exists(DATA_PATH):
     # 分頁一：🎓 學生個人查詢
     # =========================================================
     with tab_student:
-      st.write("查詢您在 10 份考卷中的得分與星星獲得狀況！此系統查詢結果非即時更新，最後更新時間為2026/10/9 13:50")
+      st.write(
+          "查詢您在 10 份考卷中的得分與星星獲得狀況！此系統查詢結果非即時更新，最後更新時間為2026/10/9 13:50"
+      )
 
       with st.form("student_login_form"):
         pwd_input = st.text_input(
             "請在下方輸入您的個人查詢密碼(密碼為學號+身分證後4碼，例如學號為910234身分證後四碼為6666，則輸入9102346666",
-        
         ).strip()
 
         submit_button = st.form_submit_button("🔍 查詢(非即時更新!)")
@@ -163,55 +164,79 @@ if os.path.exists(DATA_PATH):
 
           # --- 區塊：段考平時成績換算 ---
           st.markdown("### 📊 各次段考平時成績換算")
-          
-          p1_stars = student_data[student_data["考卷序號"].isin([1, 2, 3, 4, 5])]["獲得星星數"].sum()
-          p2_stars = student_data[student_data["考卷序號"].isin([6, 7])]["獲得星星數"].sum()
-          p3_stars = student_data[student_data["考卷序號"].isin([8, 9, 10])]["獲得星星數"].sum()
-          
+
+          p1_stars = student_data[student_data["考卷序號"].isin([1, 2, 3, 4, 5])][
+              "獲得星星數"
+          ].sum()
+          p2_stars = student_data[student_data["考卷序號"].isin([6, 7])][
+              "獲得星星數"
+          ].sum()
+          p3_stars = student_data[
+              student_data["考卷序號"].isin([8, 9, 10])
+          ]["獲得星星數"].sum()
+
           p1_score = round((p1_stars / 30) * 100, 1)
           p2_score = round((p2_stars / 12) * 100, 1)
           p3_score = round((p3_stars / 18) * 100, 1)
-          
+
           # 計算總平時成績
-          total_score = round((p1_score * 0.5) + (p2_score * 0.2) + (p3_score * 0.3), 1)
-          
+          total_score = round(
+              (p1_score * 0.5) + (p2_score * 0.2) + (p3_score * 0.3), 1
+          )
+
           score_data = [
-              {"段考次別": "第一次段考 (考卷 1~5) (50%)", "滿分星星數": 30, "已獲星星數": p1_stars, "平時成績分數": f"{p1_score:.1f}"},
-              {"段考次別": "第二次段考 (考卷 6~7) (20%)", "滿分星星數": 12, "已獲星星數": p2_stars, "平時成績分數": f"{p2_score:.1f}"},
-              {"段考次別": "第三次段考 (考卷 8~10) (30%)", "滿分星星數": 18, "已獲星星數": p3_stars, "平時成績分數": f"{p3_score:.1f}"},
-              {"段考次別": "**學期總平時成績(網路題庫部分)**", "滿分星星數": "-", "已獲星星數": "-", "平時成績分數": f"**{total_score:.1f}**"}
+              {
+                  "段考次別": "第一次段考 (考卷 1~5) (50%)",
+                  "滿分星星數": 30,
+                  "已獲星星數": p1_stars,
+                  "平時成績分數": f"{p1_score:.1f}",
+              },
+              {
+                  "段考次別": "第二次段考 (考卷 6~7) (20%)",
+                  "滿分星星數": 12,
+                  "已獲星星數": p2_stars,
+                  "平時成績分數": f"{p2_score:.1f}",
+              },
+              {
+                  "段考次別": "第三次段考 (考卷 8~10) (30%)",
+                  "滿分星星數": 18,
+                  "已獲星星數": p3_stars,
+                  "平時成績分數": f"{p3_score:.1f}",
+              },
+              {
+                  "段考次別": "**學期總平時成績(網路題庫部分)**",
+                  "滿分星星數": "-",
+                  "已獲星星數": "-",
+                  "平時成績分數": f"**{total_score:.1f}**",
+              },
           ]
-          
+
           score_df = pd.DataFrame(score_data)
           st.dataframe(score_df, use_container_width=True, hide_index=True)
 
           # --- 區塊：個別考卷詳細狀況 (補齊 1~10 份) ---
           st.markdown("### 📋 10 份考卷詳細達成狀況")
-          
+
           full_exam_data = []
-          # 1. 強制加入 1~10 份考卷
           for i in range(1, 11):
-              exam_record = student_data[student_data["考卷序號"] == i]
-              if not exam_record.empty:
-                  # 有資料則取真實數據
-                  full_exam_data.append(exam_record.iloc[0].to_dict())
-              else:
-                  # 沒資料則補上 0 與 ❌
-                  full_exam_data.append({
-                      "考卷名稱": f"{i}. {EXAM_NAMES.get(i, '')}",
-                      "獲得星星數": 0,
-                      "條件1(3星)": "❌",
-                      "條件2(2星)": "❌",
-                      "條件3(1星)": "❌",
-                      "最高得分": 0,
-                      "總作答次數": 0
-                  })
-          
-          # 2. 如果有超出 1~10 以外的考卷（防呆機制）也補在最後面
+            exam_record = student_data[student_data["考卷序號"] == i]
+            if not exam_record.empty:
+              full_exam_data.append(exam_record.iloc[0].to_dict())
+            else:
+              full_exam_data.append({
+                  "考卷名稱": f"{i}. {EXAM_NAMES.get(i, '')}",
+                  "獲得星星數": 0,
+                  "條件1(3星)": "❌",
+                  "條件2(2星)": "❌",
+                  "條件3(1星)": "❌",
+                  "最高得分": 0,
+                  "總作答次數": 0,
+              })
+
           other_exams = student_data[~student_data["考卷序號"].isin(range(1, 11))]
           for _, row in other_exams.iterrows():
-              full_exam_data.append(row.to_dict())
-              
+            full_exam_data.append(row.to_dict())
+
           full_exam_df = pd.DataFrame(full_exam_data)
 
           display_cols = [
@@ -228,6 +253,19 @@ if os.path.exists(DATA_PATH):
               use_container_width=True,
               hide_index=True,
           )
+
+          # --- 區塊：學生個人長條圖 (每份考卷星星數 + 總星星數) ---
+          st.markdown("### 📈 個人獲得星星數分佈圖")
+          chart_data = full_exam_df.set_index("考卷名稱")[["獲得星星數"]]
+          st.bar_chart(chart_data)
+
+          # 學生個人總星星數比較（可以跟滿分對比或呈現總體結構，此處呈現單一總霸長條）
+          st.markdown("##### 🌟 總星星數累計 (滿分 60 星)")
+          total_chart_df = pd.DataFrame(
+              {"項目": ["累積獲得總星星數", "未獲得星星數"], "星星數": [total_earned_stars, max(0, 60 - total_earned_stars)]}
+          ).set_index("項目")
+          st.bar_chart(total_chart_df)
+
         else:
           st.warning("⚠️ 密碼錯誤或找不到此紀錄，請重新確認後再試。")
 
@@ -300,20 +338,20 @@ if os.path.exists(DATA_PATH):
                 "📝 全班各考卷『作答次數』一覽表",
                 "📊 全班各次段考『平時成績換算』一覽表",
                 "🔍 個別學生數據詳細抽查",
+                "📈 各考卷獲得星星數分佈圖",  # 新增教師圖表分頁選項
             ],
             horizontal=True,
         )
 
-        # 確保大表的欄位必定包含 1~10，不會因為全班都沒寫某張考卷而遺漏該欄位
         base_exam_titles = [f"{i}. {EXAM_NAMES[i]}" for i in range(1, 11)]
         existing_exam_titles = sorted(processed_df["考卷名稱"].unique())
-        
+
         exam_titles = []
         for t in base_exam_titles:
-            exam_titles.append(t)
+          exam_titles.append(t)
         for t in existing_exam_titles:
-            if t not in exam_titles:
-                exam_titles.append(t)
+          if t not in exam_titles:
+            exam_titles.append(t)
 
         if view_option == "⭐ 全班各考卷『獲得星星數』一覽表":
           st.markdown("### ⭐ 全班各考卷「獲得星星數」矩陣表")
@@ -368,47 +406,65 @@ if os.path.exists(DATA_PATH):
           )
 
           st.dataframe(df_attempts, use_container_width=True, hide_index=True)
-          
+
         elif view_option == "📊 全班各次段考『平時成績換算』一覽表":
           st.markdown("### 📊 全班各次段考「平時成績換算」一覽表")
-          
+
           scores_data = []
           for _, student in unique_students.iterrows():
-              seat = student["班級座號"]
-              name = student["姓名"]
-              
-              student_data = processed_df[(processed_df["班級座號"] == seat) & (processed_df["姓名"] == name)]
-              
-              p1_stars = student_data[student_data["考卷序號"].isin([1, 2, 3, 4, 5])]["獲得星星數"].sum()
-              p2_stars = student_data[student_data["考卷序號"].isin([6, 7])]["獲得星星數"].sum()
-              p3_stars = student_data[student_data["考卷序號"].isin([8, 9, 10])]["獲得星星數"].sum()
-              
-              p1_score = round((p1_stars / 30) * 100, 1)
-              p2_score = round((p2_stars / 12) * 100, 1)
-              p3_score = round((p3_stars / 18) * 100, 1)
+            seat = student["班級座號"]
+            name = student["姓名"]
 
-              # 計算總平時成績
-              total_score = round((p1_score * 0.5) + (p2_score * 0.2) + (p3_score * 0.3), 1)
-              
-              scores_data.append({
-                  "班級座號": seat,
-                  "姓名": name,
-                  "第一次段考星數(滿30)": p1_stars,
-                  "第一次段考範圍平時成績": p1_score,
-                  "第二次段考星數(滿12)": p2_stars,
-                  "第二次段考範圍平時成績": p2_score,
-                  "第三次段考星數(滿18)": p3_stars,
-                  "第三次段考範圍平時成績": p3_score,
-                  "學期總平時成績": total_score
-              })
-              
+            student_data = processed_df[
+                (processed_df["班級座號"] == seat)
+                & (processed_df["姓名"] == name)
+            ]
+
+            p1_stars = student_data[
+                student_data["考卷序號"].isin([1, 2, 3, 4, 5])
+            ]["獲得星星數"].sum()
+            p2_stars = student_data[student_data["考卷序號"].isin([6, 7])][
+                "獲得星星數"
+            ].sum()
+            p3_stars = student_data[
+                student_data["考卷序號"].isin([8, 9, 10])
+            ]["獲得星星數"].sum()
+
+            p1_score = round((p1_stars / 30) * 100, 1)
+            p2_score = round((p2_stars / 12) * 100, 1)
+            p3_score = round((p3_stars / 18) * 100, 1)
+
+            total_score = round(
+                (p1_score * 0.5) + (p2_score * 0.2) + (p3_score * 0.3), 1
+            )
+
+            scores_data.append({
+                "班級座號": seat,
+                "姓名": name,
+                "第一次段考星數(滿30)": p1_stars,
+                "第一次段考範圍平時成績": p1_score,
+                "第二次段考星數(滿12)": p2_stars,
+                "第二次段考範圍平時成績": p2_score,
+                "第三次段考星數(滿18)": p3_stars,
+                "第三次段考範圍平時成績": p3_score,
+                "學期總平時成績": total_score,
+            })
+
           df_scores = pd.DataFrame(scores_data)
-          
-          df_scores["第一次段考範圍平時成績"] = df_scores["第一次段考範圍平時成績"].apply(lambda x: f"{x:.1f}")
-          df_scores["第二次段考範圍平時成績"] = df_scores["第二次段考範圍平時成績"].apply(lambda x: f"{x:.1f}")
-          df_scores["第三次段考範圍平時成績"] = df_scores["第三次段考範圍平時成績"].apply(lambda x: f"{x:.1f}")
-          df_scores["學期總平時成績"] = df_scores["學期總平時成績"].apply(lambda x: f"{x:.1f}")
-          
+
+          df_scores["第一次段考範圍平時成績"] = df_scores[
+              "第一次段考範圍平時成績"
+          ].apply(lambda x: f"{x:.1f}")
+          df_scores["第二次段考範圍平時成績"] = df_scores[
+              "第二次段考範圍平時成績"
+          ].apply(lambda x: f"{x:.1f}")
+          df_scores["第三次段考範圍平時成績"] = df_scores[
+              "第三次段考範圍平時成績"
+          ].apply(lambda x: f"{x:.1f}")
+          df_scores["學期總平時成績"] = df_scores["學期總平時成績"].apply(
+              lambda x: f"{x:.1f}"
+          )
+
           st.dataframe(df_scores, use_container_width=True, hide_index=True)
 
         elif view_option == "🔍 個別學生數據詳細抽查":
@@ -425,28 +481,29 @@ if os.path.exists(DATA_PATH):
                 (processed_df["班級座號"] == seat)
                 & (processed_df["姓名"] == name)
             ]
-            
-            # --- 教師抽查畫面也同樣補齊 1~10 份考卷 ---
+
             full_exam_data_teacher = []
             for i in range(1, 11):
-                exam_record = selected_data[selected_data["考卷序號"] == i]
-                if not exam_record.empty:
-                    full_exam_data_teacher.append(exam_record.iloc[0].to_dict())
-                else:
-                    full_exam_data_teacher.append({
-                        "考卷名稱": f"{i}. {EXAM_NAMES.get(i, '')}",
-                        "獲得星星數": 0,
-                        "條件1(3星)": "❌",
-                        "條件2(2星)": "❌",
-                        "條件3(1星)": "❌",
-                        "最高得分": 0,
-                        "總作答次數": 0
-                    })
-                    
-            other_exams_teacher = selected_data[~selected_data["考卷序號"].isin(range(1, 11))]
+              exam_record = selected_data[selected_data["考卷序號"] == i]
+              if not exam_record.empty:
+                full_exam_data_teacher.append(exam_record.iloc[0].to_dict())
+              else:
+                full_exam_data_teacher.append({
+                    "考卷名稱": f"{i}. {EXAM_NAMES.get(i, '')}",
+                    "獲得星星數": 0,
+                    "條件1(3星)": "❌",
+                    "條件2(2星)": "❌",
+                    "條件3(1星)": "❌",
+                    "最高得分": 0,
+                    "總作答次數": 0,
+                })
+
+            other_exams_teacher = selected_data[
+                ~selected_data["考卷序號"].isin(range(1, 11))
+            ]
             for _, row in other_exams_teacher.iterrows():
-                full_exam_data_teacher.append(row.to_dict())
-                
+              full_exam_data_teacher.append(row.to_dict())
+
             full_exam_df_teacher = pd.DataFrame(full_exam_data_teacher)
 
             display_cols = [
@@ -463,6 +520,40 @@ if os.path.exists(DATA_PATH):
                 use_container_width=True,
                 hide_index=True,
             )
+
+        elif view_option == "📈 各考卷獲得星星數分佈圖":
+          st.markdown("### 📈 全班各考卷獲得星星數與總星星數統計圖表")
+
+          # 1. 計算每一份考卷全班獲得的平均星星數（或總星星數）
+          # 這裡我們用 pivot 算出每一張考卷各個學生拿到的星星數
+          pivot_stars_chart = pd.pivot_table(
+              processed_df,
+              index=["班級座號", "姓名"],
+              columns="考卷名稱",
+              values="獲得星星數",
+              aggfunc="first",
+          ).fillna(0)
+
+          for title in exam_titles:
+            if title not in pivot_stars_chart.columns:
+              pivot_stars_chart[title] = 0
+          pivot_stars_chart = pivot_stars_chart[exam_titles]
+
+          # 計算每張考卷全班獲得星星數的「總和」或「平均」
+          exam_total_stars_sum = pivot_stars_chart.sum()
+          
+          st.markdown("#### 📌 1. 各考卷全班總獲得星星數")
+          st.bar_chart(exam_total_stars_sum)
+
+          st.markdown("#### 📌 2. 全班「總星星數 (10份考卷加起來)」分佈狀況")
+          # 計算每位學生的總星星數
+          student_total_stars_series = pivot_stars_chart.sum(axis=1)
+          student_total_df = pd.DataFrame({
+              "學生": [f"{s[0]} {s[1]}" for s in student_total_stars_series.index],
+              "總星星數": student_total_stars_series.values
+          }).set_index("學生")
+          
+          st.bar_chart(student_total_df)
 
   except Exception as e:
     st.error(
