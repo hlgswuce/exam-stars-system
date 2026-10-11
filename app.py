@@ -4,7 +4,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-# 設定網頁標題與寬螢幕版面 (wide layout 方便觀看全班大表)
+# 設定網頁標題與寬螢幕版面 (wide layout 方便觀看全體大表)
 st.set_page_config(
     page_title="網路題庫星星成就查詢系統", page_icon="⭐", layout="wide"
 )
@@ -46,7 +46,7 @@ def get_seat_sort_key(seat_str):
   return [int(n) for n in nums] if nums else [0]
 
 
-# 輔助函式：繪製分佈長條圖 (支援標註個人位置與限制最大長條寬度)
+# 輔助函式：繪製分佈長條圖 (支援標註個人位置)
 def draw_distribution_chart(df, x_col, y_col, student_val=None, title=""):
   chart_df = df.copy()
   if student_val is not None:
@@ -59,12 +59,12 @@ def draw_distribution_chart(df, x_col, y_col, student_val=None, title=""):
         alt.value("#1F77B4"),  # 標準藍色
     )
   else:
-    chart_df["highlight"] = "全班同學"
+    chart_df["highlight"] = "全體同學"
     color_condition = alt.value("#1F77B4")
 
   chart = (
       alt.Chart(chart_df)
-      .mark_bar(maxWidth=45)  # 限制長條最大寬度，避免電腦版過寬變醜
+      .mark_bar()  # 移除不支援的 maxWidth 參數
       .encode(
           x=alt.X(f"{x_col}:O", title=x_col, sort=alt.EncodingSortField()),
           y=alt.Y(f"{y_col}:Q", title="人數"),
@@ -156,7 +156,7 @@ if os.path.exists(DATA_PATH):
 
     tab_student, tab_teacher = st.tabs(["🎓 學生查詢", "👩‍🏫 教師後台"])
 
-    # 準備全班的統計矩陣 (供學生與老師的圖表共同使用)
+    # 準備全體的統計矩陣 (供學生與老師的圖表共同使用)
     base_exam_titles = [f"{i}. {EXAM_NAMES[i]}" for i in range(1, 11)]
     existing_exam_titles = sorted(processed_df["考卷名稱"].unique())
     exam_titles = []
@@ -179,7 +179,7 @@ if os.path.exists(DATA_PATH):
         pivot_stars_chart[title] = 0
     pivot_stars_chart = pivot_stars_chart[exam_titles]
 
-    # 全班總星數 Series
+    # 全體總星數 Series
     student_total_stars_series = pivot_stars_chart.sum(axis=1)
 
     # =========================================================
@@ -314,7 +314,7 @@ if os.path.exists(DATA_PATH):
           # --- 區塊：學生個人可視化分佈圖 (總表單獨一行，10張各考卷改為左右兩欄並排) ---
           st.markdown("---")
           st.markdown(
-              "### 📊 全班表現分佈與您的位置 (紅色柱子為您目前的位置)"
+              "### 📊 全體表現分佈與您的位置 (紅色柱子為您目前的位置)"
           )
 
           # 1. 總星數分佈圖 (獨占一行)
@@ -334,12 +334,12 @@ if os.path.exists(DATA_PATH):
                   "總星星數",
                   "人數",
                   student_val=total_earned_stars,
-                  title="全班「總星星數與人數」關係圖",
+                  title="全體「總星星數與人數」關係圖",
               ),
               use_container_width=True,
           )
 
-          # 2. 10 張各考卷分佈圖 (使用 st.columns(2) 左右兩欄並排，避免電腦版被拉得太寬)
+          # 2. 10 張各考卷分佈圖 (使用 st.columns(2) 左右兩欄並排)
           st.markdown("#### 📋 各考卷表現分佈")
           for i in range(0, len(exam_titles), 2):
             col1, col2 = st.columns(2)
@@ -419,316 +419,3 @@ if os.path.exists(DATA_PATH):
         with st.form("teacher_login_form"):
           teacher_pwd = st.text_input(
               "請輸入教師管理密碼：", type="password"
-          ).strip()
-          teacher_submit = st.form_submit_button("登入管理後台")
-
-        if teacher_submit:
-          if teacher_pwd == TEACHER_PASSWORD:
-            st.session_state["teacher_logged_in"] = True
-            st.rerun()
-          else:
-            st.error("⚠️ 教師密碼不正確，請重新輸入。")
-
-      if st.session_state["teacher_logged_in"]:
-        top_col1, top_col2 = st.columns([8, 2])
-        with top_col1:
-          st.success("🔓 教師權限驗證成功！已載入全班數據統計。")
-        with top_col2:
-          if st.button("🔒 登出後台"):
-            st.session_state["teacher_logged_in"] = False
-            st.rerun()
-
-        unique_students = (
-            processed_df[["班級座號", "姓名"]].drop_duplicates().copy()
-        )
-        unique_students["_seat_key"] = unique_students["班級座號"].apply(
-            get_seat_sort_key
-        )
-        unique_students = unique_students.sort_values("_seat_key").drop(
-            columns=["_seat_key"]
-        )
-
-        total_students_count = len(unique_students)
-
-        student_star_totals = processed_df.groupby(["班級座號", "姓名"])[
-            "獲得星星數"
-        ].sum()
-        avg_stars = (
-            student_star_totals.mean() if not student_star_totals.empty else 0
-        )
-        max_stars = (
-            student_star_totals.max() if not student_star_totals.empty else 0
-        )
-
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("全班總人數", f"{total_students_count} 人")
-        m2.metric("班級平均星星數", f"{avg_stars:.1f} ⭐")
-        m3.metric("全班最高星星數", f"{max_stars:.1f} ⭐")
-        m4.metric("總累計作答人次", f"{processed_df['總作答次數'].sum()} 次")
-
-        st.markdown("---")
-
-        view_option = st.radio(
-            "請選擇要查看的全班報表類型：",
-            [
-                "⭐ 全班各考卷『獲得星星數』一覽表",
-                "📝 全班各考卷『作答次數』一覽表",
-                "📊 全班各次段考『平時成績換算』一覽表",
-                "🔍 個別學生數據詳細抽查",
-                "📈 各考卷與總星數分佈圖 (共11張圖)",
-            ],
-            horizontal=True,
-        )
-
-        if view_option == "⭐ 全班各考卷『獲得星星數』一覽表":
-          st.markdown("### ⭐ 全班各考卷「獲得星星數」矩陣表")
-
-          pivot_stars = pd.pivot_table(
-              processed_df,
-              index=["班級座號", "姓名"],
-              columns="考卷名稱",
-              values="獲得星星數",
-              aggfunc="first",
-          ).fillna(0)
-
-          for title in exam_titles:
-            if title not in pivot_stars.columns:
-              pivot_stars[title] = 0
-
-          pivot_stars = pivot_stars[exam_titles]
-          pivot_stars["總獲得星星數"] = pivot_stars.sum(axis=1)
-
-          df_stars = pivot_stars.reset_index()
-          df_stars["_seat_key"] = df_stars["班級座號"].apply(get_seat_sort_key)
-          df_stars = df_stars.sort_values("_seat_key").drop(
-              columns=["_seat_key"]
-          )
-
-          st.dataframe(df_stars, use_container_width=True, hide_index=True)
-
-        elif view_option == "📝 全班各考卷『作答次數』一覽表":
-          st.markdown("### 📝 全班各考卷「作答次數」矩陣表")
-
-          pivot_attempts = pd.pivot_table(
-              processed_df,
-              index=["班級座號", "姓名"],
-              columns="考卷名稱",
-              values="總作答次數",
-              aggfunc="first",
-          ).fillna(0)
-
-          for title in exam_titles:
-            if title not in pivot_attempts.columns:
-              pivot_attempts[title] = 0
-
-          pivot_attempts = pivot_attempts[exam_titles]
-          pivot_attempts["總作答次數"] = pivot_attempts.sum(axis=1)
-
-          df_attempts = pivot_attempts.reset_index()
-          df_attempts["_seat_key"] = df_attempts["班級座號"].apply(
-              get_seat_sort_key
-          )
-          df_attempts = df_attempts.sort_values("_seat_key").drop(
-              columns=["_seat_key"]
-          )
-
-          st.dataframe(df_attempts, use_container_width=True, hide_index=True)
-
-        elif view_option == "📊 全班各次段考『平時成績換算』一覽表":
-          st.markdown("### 📊 全班各次段考「平時成績換算」一覽表")
-
-          scores_data = []
-          for _, student in unique_students.iterrows():
-            seat = student["班級座號"]
-            name = student["姓名"]
-
-            student_data = processed_df[
-                (processed_df["班級座號"] == seat)
-                & (processed_df["姓名"] == name)
-            ]
-
-            p1_stars = student_data[
-                student_data["考卷序號"].isin([1, 2, 3, 4, 5])
-            ]["獲得星星數"].sum()
-            p2_stars = student_data[student_data["考卷序號"].isin([6, 7])][
-                "獲得星星數"
-            ].sum()
-            p3_stars = student_data[
-                student_data["考卷序號"].isin([8, 9, 10])
-            ]["獲得星星數"].sum()
-
-            p1_score = round((p1_stars / 30) * 100, 1)
-            p2_score = round((p2_stars / 12) * 100, 1)
-            p3_score = round((p3_stars / 18) * 100, 1)
-
-            total_score = round(
-                (p1_score * 0.5) + (p2_score * 0.2) + (p3_score * 0.3), 1
-            )
-
-            scores_data.append({
-                "班級座號": seat,
-                "姓名": name,
-                "第一次段考星數(滿30)": p1_stars,
-                "第一次段考範圍平時成績": p1_score,
-                "第二次段考星數(滿12)": p2_stars,
-                "第二次段考範圍平時成績": p2_score,
-                "第三次段考星數(滿18)": p3_stars,
-                "第三次段考範圍平時成績": p3_score,
-                "學期總平時成績": total_score,
-            })
-
-          df_scores = pd.DataFrame(scores_data)
-
-          df_scores["第一次段考範圍平時成績"] = df_scores[
-              "第一次段考範圍平時成績"
-          ].apply(lambda x: f"{x:.1f}")
-          df_scores["第二次段考範圍平時成績"] = df_scores[
-              "第二次段考範圍平時成績"
-          ].apply(lambda x: f"{x:.1f}")
-          df_scores["第三次段考範圍平時成績"] = df_scores[
-              "第三次段考範圍平時成績"
-          ].apply(lambda x: f"{x:.1f}")
-          df_scores["學期總平時成績"] = df_scores["學期總平時成績"].apply(
-              lambda x: f"{x:.1f}"
-          )
-
-          st.dataframe(df_scores, use_container_width=True, hide_index=True)
-
-        elif view_option == "🔍 個別學生數據詳細抽查":
-          st.markdown("### 🔍 個別學生詳細表現查詢")
-
-          student_list = (
-              unique_students["班級座號"] + " " + unique_students["姓名"]
-          ).tolist()
-          selected_student_str = st.selectbox("請選擇要查看的學生：", student_list)
-
-          if selected_student_str:
-            seat, name = selected_student_str.split(" ", 1)
-            selected_data = processed_df[
-                (processed_df["班級座號"] == seat)
-                & (processed_df["姓名"] == name)
-            ]
-
-            full_exam_data_teacher = []
-            for i in range(1, 11):
-              exam_record = selected_data[selected_data["考卷序號"] == i]
-              if not exam_record.empty:
-                full_exam_data_teacher.append(exam_record.iloc[0].to_dict())
-              else:
-                full_exam_data_teacher.append({
-                    "考卷名稱": f"{i}. {EXAM_NAMES.get(i, '')}",
-                    "獲得星星數": 0,
-                    "條件1(3星)": "❌",
-                    "條件2(2星)": "❌",
-                    "條件3(1星)": "❌",
-                    "最高得分": 0,
-                    "總作答次數": 0,
-                })
-
-            other_exams_teacher = selected_data[
-                ~selected_data["考卷序號"].isin(range(1, 11))
-            ]
-            for _, row in other_exams_teacher.iterrows():
-              full_exam_data_teacher.append(row.to_dict())
-
-            full_exam_df_teacher = pd.DataFrame(full_exam_data_teacher)
-
-            display_cols = [
-                "考卷名稱",
-                "獲得星星數",
-                "條件1(3星)",
-                "條件2(2星)",
-                "條件3(1星)",
-                "最高得分",
-                "總作答次數",
-            ]
-            st.dataframe(
-                full_exam_df_teacher[display_cols],
-                use_container_width=True,
-                hide_index=True,
-            )
-
-        elif view_option == "📈 各考卷與總星數分佈圖 (共11張圖)":
-          st.markdown(
-              "### 📊 全班表現分佈圖表總覽 (總表分佈 + 10張各考卷分佈)"
-          )
-
-          # --- 圖表 1：全班總星星數與人數關係圖 (0 ~ 60 星) ---
-          st.markdown("---")
-          st.markdown("#### 🌟 總表")
-
-          total_distribution = pd.Series(0, index=range(61))
-          counts_total = student_total_stars_series.value_counts()
-          for stars, count in counts_total.items():
-            total_distribution[int(stars)] = count
-
-          df_total_chart = pd.DataFrame({
-              "總星星數": total_distribution.index,
-              "人數": total_distribution.values,
-          })
-          st.altair_chart(
-              draw_distribution_chart(
-                  df_total_chart,
-                  "總星星數",
-                  "人數",
-                  title="全班「總星星數與人數」關係圖",
-              ),
-              use_container_width=True,
-          )
-
-          # --- 圖表 2 ~ 11：各考卷獲得星星數與人數關係圖 (0 ~ 6 星，改為左右兩欄並排) ---
-          st.markdown("---")
-          st.markdown("#### 📋 各考卷表現分佈")
-
-          for i in range(0, len(exam_titles), 2):
-            col1, col2 = st.columns(2)
-
-            with col1:
-              title1 = exam_titles[i]
-              exam_series1 = pivot_stars_chart[title1]
-              exam_dist1 = pd.Series(0, index=range(7))
-              for stars, count in exam_series1.value_counts().items():
-                exam_dist1[int(stars)] = count
-
-              df_chart1 = pd.DataFrame({
-                  "獲得星星數": exam_dist1.index,
-                  "人數": exam_dist1.values,
-              })
-              st.altair_chart(
-                  draw_distribution_chart(
-                      df_chart1,
-                      "獲得星星數",
-                      "人數",
-                      title=title1,
-                  ),
-                  use_container_width=True,
-              )
-
-            if i + 1 < len(exam_titles):
-              with col2:
-                title2 = exam_titles[i + 1]
-                exam_series2 = pivot_stars_chart[title2]
-                exam_dist2 = pd.Series(0, index=range(7))
-                for stars, count in exam_series2.value_counts().items():
-                  exam_dist2[int(stars)] = count
-
-                df_chart2 = pd.DataFrame({
-                    "獲得星星數": exam_dist2.index,
-                    "人數": exam_dist2.values,
-                })
-                st.altair_chart(
-                    draw_distribution_chart(
-                        df_chart2,
-                        "獲得星星數",
-                        "人數",
-                        title=title2,
-                    ),
-                    use_container_width=True,
-                )
-
-  except Exception as e:
-    st.error(
-        f"資料讀取錯誤，請檢查 Excel 檔欄位是否包含：『密碼』、『班級座號』、『姓名』、『考卷編號』、『得分』。錯誤訊息: {e}"
-    )
-else:
-  st.info("系統維護中或尚未載入成績資料，請稍後再試。")
