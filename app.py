@@ -80,7 +80,7 @@ def draw_distribution_chart(df, x_col, y_col, student_val=None, title=""):
 # ---------------------------------------------------------
 # 資料處理核心邏輯 (加入 modified_time 參數來自動偵測檔案變更)
 # ---------------------------------------------------------
-@st.cache_data
+@st.cache_data(ttl=1)  # 設定快取存活時間為 1 秒，確保檔案變更時能立即讀取
 def process_data(file_path, modified_time):
   df = pd.read_excel(file_path)
   df.columns = df.columns.str.strip()
