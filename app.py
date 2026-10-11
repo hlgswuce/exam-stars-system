@@ -1,3 +1,4 @@
+import altair as alt
 import os
 import re
 import pandas as pd
@@ -43,6 +44,37 @@ def clean_str(val):
 def get_seat_sort_key(seat_str):
   nums = re.findall(r"\d+", str(seat_str))
   return [int(n) for n in nums] if nums else [0]
+
+
+# 輔助函式：繪製分佈長條圖 (支援標註個人位置)
+def draw_distribution_chart(df, x_col, y_col, student_val=None, title=""):
+  chart_df = df.copy()
+  if student_val is not None:
+    chart_df["highlight"] = chart_df[x_col].apply(
+        lambda x: "⭐ 您的位置" if int(x) == int(student_val) else "其他同學"
+    )
+    color_condition = alt.condition(
+        alt.datum.highlight == "⭐ 您的位置",
+        alt.value("#FF4B4B"),  # 醒目紅色標示個人位置
+        alt.value("#1F77B4"),  # 標準藍色
+    )
+  else:
+    chart_df["highlight"] = "全班同學"
+    color_condition = alt.value("#1F77B4")
+
+  chart = (
+      alt.Chart(chart_df)
+      .mark_bar()
+      .encode(
+          x=alt.X(f"{x_col}:O", title=x_col, sort=alt.EncodingSortField()),
+          y=alt.Y(f"{y_col}:Q", title="人數"),
+          color=color_condition,
+          tooltip=[x_col, y_col],
+      )
+      .properties(title=title, height=280)
+      .interactive()
+  )
+  return chart
 
 
 # ---------------------------------------------------------
@@ -124,6 +156,32 @@ if os.path.exists(DATA_PATH):
 
     tab_student, tab_teacher = st.tabs(["🎓 學生查詢", "👩‍🏫 教師後台"])
 
+    # 準備全班的統計矩陣 (供學生與老師的圖表共同使用)
+    base_exam_titles = [f"{i}. {EXAM_NAMES[i]}" for i in range(1, 11)]
+    existing_exam_titles = sorted(processed_df["考卷名稱"].unique())
+    exam_titles = []
+    for t in base_exam_titles:
+      exam_titles.append(t)
+    for t in existing_exam_titles:
+      if t not in exam_titles:
+        exam_titles.append(t)
+
+    pivot_stars_chart = pd.pivot_table(
+        processed_df,
+        index=["班級座號", "姓名"],
+        columns="考卷名稱",
+        values="獲得星星數",
+        aggfunc="first",
+    ).fillna(0)
+
+    for title in exam_titles:
+      if title not in pivot_stars_chart.columns:
+        pivot_stars_chart[title] = 0
+    pivot_stars_chart = pivot_stars_chart[exam_titles]
+
+    # 全班總星數 Series
+    student_total_stars_series = pivot_stars_chart.sum(axis=1)
+
     # =========================================================
     # 分頁一：🎓 學生個人查詢
     # =========================================================
@@ -179,7 +237,6 @@ if os.path.exists(DATA_PATH):
           p2_score = round((p2_stars / 12) * 100, 1)
           p3_score = round((p3_stars / 18) * 100, 1)
 
-          # 計算總平時成績
           total_score = round(
               (p1_score * 0.5) + (p2_score * 0.2) + (p3_score * 0.3), 1
           )
@@ -254,16 +311,66 @@ if os.path.exists(DATA_PATH):
               hide_index=True,
           )
 
-          # --- 區塊：學生個人長條圖 (每份考卷星星數 + 總星星數) ---
-          st.markdown("### 📈 個人獲得星星數分佈圖")
-          chart_data = full_exam_df.set_index("考卷名稱")[["獲得星星數"]]
-          st.bar_chart(chart_data)
+          # --- 區塊：學生個人可視化分佈圖 (包含 1 張總表 + 10 張各考卷表，且標註個人位置) ---
+          st.markdown("---")
+          st.markdown(
+              "### 📊 全班表現分佈與您的位置 (紅色柱子為您目前的位置)"
+          )
 
-          st.markdown("##### 🌟 總星星數累計 (滿分 60 星)")
-          total_chart_df = pd.DataFrame(
-              {"項目": ["累積獲得總星星數", "未獲得星星數"], "星星數": [total_earned_stars, max(0, 60 - total_earned_stars)]}
-          ).set_index("項目")
-          st.bar_chart(total_chart_df)
+          # 1. 總星數分佈圖
+          st.markdown("#### 🌟 總星星數與人數關係圖 (0~60 星)")
+          total_distribution = pd.Series(0, index=range(61))
+          counts_total = student_total_stars_series.value_counts()
+          for stars, count in counts_total.items():
+            total_distribution[int(stars)] = count
+
+          df_total_chart = pd.DataFrame({
+              "總星星數": total_distribution.index,
+              "人數": total_distribution.values,
+          })
+          st.altair_chart(
+              draw_distribution_chart(
+                  df_total_chart,
+                  "總星星數",
+                  "人數",
+                  student_val=total_earned_stars,
+                  title="全班「總星星數與人數」關係圖",
+              ),
+              use_container_width=True,
+          )
+
+          # 2. 10 張各考卷分佈圖
+          st.markdown("#### 📋 各考卷「獲得星星數與人數」關係圖")
+          for title in exam_titles:
+            exam_series = pivot_stars_chart[title]
+            exam_distribution = pd.Series(0, index=range(7))
+            exam_counts = exam_series.value_counts()
+            for stars, count in exam_counts.items():
+              exam_distribution[int(stars)] = count
+
+            df_exam_chart = pd.DataFrame({
+                "獲得星星數": exam_distribution.index,
+                "人數": exam_distribution.values,
+            })
+
+            # 抓出該學生在該張考卷拿到的星星數
+            match_row = full_exam_df[full_exam_df["考卷名稱"] == title]
+            student_exam_stars = (
+                int(match_row["獲得星星數"].values[0])
+                if not match_row.empty
+                else 0
+            )
+
+            st.altair_chart(
+                draw_distribution_chart(
+                    df_exam_chart,
+                    "獲得星星數",
+                    "人數",
+                    student_val=student_exam_stars,
+                    title=f"{title} - 獲得星星數與人數關係圖",
+                ),
+                use_container_width=True,
+            )
 
         else:
           st.warning("⚠️ 密碼錯誤或找不到此紀錄，請重新確認後再試。")
@@ -337,20 +444,10 @@ if os.path.exists(DATA_PATH):
                 "📝 全班各考卷『作答次數』一覽表",
                 "📊 全班各次段考『平時成績換算』一覽表",
                 "🔍 個別學生數據詳細抽查",
-                "📈 各考卷與總星數分佈圖 (共11張圖)",  # 新增分頁選項
+                "📈 各考卷與總星數分佈圖 (共11張圖)",
             ],
             horizontal=True,
         )
-
-        base_exam_titles = [f"{i}. {EXAM_NAMES[i]}" for i in range(1, 11)]
-        existing_exam_titles = sorted(processed_df["考卷名稱"].unique())
-
-        exam_titles = []
-        for t in base_exam_titles:
-          exam_titles.append(t)
-        for t in existing_exam_titles:
-          if t not in exam_titles:
-            exam_titles.append(t)
 
         if view_option == "⭐ 全班各考卷『獲得星星數』一覽表":
           st.markdown("### ⭐ 全班各考卷「獲得星星數」矩陣表")
@@ -521,58 +618,57 @@ if os.path.exists(DATA_PATH):
             )
 
         elif view_option == "📈 各考卷與總星數分佈圖 (共11張圖)":
-          st.markdown("### 📊 全班表現分佈圖表總覽 (總星數分佈 + 10張各考卷分佈)")
-
-          # 建立全班各考卷星星數的矩陣 (列：學生，欄：各考卷)
-          pivot_stars_chart = pd.pivot_table(
-              processed_df,
-              index=["班級座號", "姓名"],
-              columns="考卷名稱",
-              values="獲得星星數",
-              aggfunc="first",
-          ).fillna(0)
-
-          for title in exam_titles:
-            if title not in pivot_stars_chart.columns:
-              pivot_stars_chart[title] = 0
-          pivot_stars_chart = pivot_stars_chart[exam_titles]
+          st.markdown(
+              "### 📊 全班表現分佈圖表總覽 (總星數分佈 + 10張各考卷分佈)"
+          )
 
           # --- 圖表 1：全班總星星數與人數關係圖 (0 ~ 60 星) ---
           st.markdown("---")
-          st.markdown("#### 🌟 第 1 張圖：全班「總星星數」與「獲得人數」關係圖 (0~60 星)")
-          
-          # 計算每位學生的總星數
-          student_total_stars = pivot_stars_chart.sum(axis=1)
-          
-          # 建立 0 到 60 星的完整分佈統計
+          st.markdown("#### 🌟 全班「總星星數與人數」關係圖 (0~60 星)")
+
           total_distribution = pd.Series(0, index=range(61))
-          counts_total = student_total_stars.value_counts()
+          counts_total = student_total_stars_series.value_counts()
           for stars, count in counts_total.items():
             total_distribution[int(stars)] = count
 
-          df_total_chart = pd.DataFrame({"獲得人數": total_distribution})
-          df_total_chart.index.name = "總星星數"
-          st.bar_chart(df_total_chart)
+          df_total_chart = pd.DataFrame({
+              "總星星數": total_distribution.index,
+              "人數": total_distribution.values,
+          })
+          st.altair_chart(
+              draw_distribution_chart(
+                  df_total_chart,
+                  "總星星數",
+                  "人數",
+                  title="全班「總星星數與人數」關係圖",
+              ),
+              use_container_width=True,
+          )
 
           # --- 圖表 2 ~ 11：各考卷獲得星星數與人數關係圖 (0 ~ 6 星) ---
           st.markdown("---")
-          st.markdown("#### 📋 第 2 ~ 11 張圖：各考卷「獲得星星數」與「獲得人數」關係圖")
+          st.markdown("#### 📋 各考卷「獲得星星數與人數」關係圖")
 
-          for i, title in enumerate(exam_titles, start=2):
-            st.markdown(f"##### 📌 第 {i} 張圖：{title} 的星星數分佈")
-            
-            # 統計該考卷拿到 0, 1, 2, 3, 4, 5, 6 星的人數
-            exam_col_series = pivot_stars_chart[title]
-            
-            # 建立 0 到 6 星的完整分佈（防範某些星數完全沒人拿到導致圖表斷層）
+          for title in exam_titles:
+            exam_series = pivot_stars_chart[title]
             exam_distribution = pd.Series(0, index=range(7))
-            exam_counts = exam_col_series.value_counts()
+            exam_counts = exam_series.value_counts()
             for stars, count in exam_counts.items():
               exam_distribution[int(stars)] = count
 
-            df_exam_chart = pd.DataFrame({"獲得人數": exam_distribution})
-            df_exam_chart.index.name = "獲得星星數"
-            st.bar_chart(df_exam_chart)
+            df_exam_chart = pd.DataFrame({
+                "獲得星星數": exam_distribution.index,
+                "人數": exam_distribution.values,
+            })
+            st.altair_chart(
+                draw_distribution_chart(
+                    df_exam_chart,
+                    "獲得星星數",
+                    "人數",
+                    title=f"{title} - 獲得星星數與人數關係圖",
+                ),
+                use_container_width=True,
+            )
 
   except Exception as e:
     st.error(
