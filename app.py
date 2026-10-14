@@ -78,9 +78,9 @@ def draw_distribution_chart(df, x_col, y_col, student_val=None, title=""):
 
 
 # ---------------------------------------------------------
-# 資料處理核心邏輯 (加入 cache_data)
+# 資料處理核心邏輯 (加入 modified_time 參數來自動偵測檔案變更)
 # ---------------------------------------------------------
-@st.cache_data
+@st.cache_data(ttl=1)  # 設定快取存活時間為 1 秒，確保檔案變更時能立即讀取
 def process_data(file_path, modified_time):
   df = pd.read_excel(file_path)
   df.columns = df.columns.str.strip()
@@ -147,14 +147,6 @@ def process_data(file_path, modified_time):
 # ---------------------------------------------------------
 st.title("⭐ 網路題庫星星成就查詢系統(非即時更新)")
 
-# 側邊欄：提供手動清除快取按鈕，方便隨時讀取最新上傳的 Excel
-with st.sidebar:
-  st.markdown("### ⚙️ 系統維護與更新")
-  if st.button("🔄 強制重新載入最新 Excel 資料"):
-    st.cache_data.clear()
-    st.success("已成功清除快取，資料已重新整理！")
-    st.rerun()
-
 if os.path.exists(DATA_PATH):
   try:
     file_mtime = os.path.getmtime(DATA_PATH)
@@ -191,7 +183,7 @@ if os.path.exists(DATA_PATH):
     # =========================================================
     with tab_student:
       st.write(
-          "查詢您在 10 份考卷中的得分與星星獲得狀況！此系統查詢結果非即時更新，最後更新時間為2026/10/12 16:28"
+          "查詢您在 10 份考卷中的得分與星星獲得狀況！此系統查詢結果非即時更新，最後更新時間為2026/10/14 14:40"
       )
 
       with st.form("student_login_form"):
@@ -727,6 +719,4 @@ if os.path.exists(DATA_PATH):
         f"資料讀取錯誤，請檢查 Excel 檔欄位是否包含：『密碼』、『班級座號』、『姓名』、『考卷編號』、『得分』。錯誤訊息: {e}"
     )
 else:
-  st.info(
-      "找不到成績資料檔案（10140229data.xlsx），請確認檔案已上傳至專案根目錄。"
-  )
+  st.info("系統維護中或尚未載入成績資料，請稍後再試。")
